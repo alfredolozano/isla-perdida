@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏝️ La Isla Perdida - Estilo Roblox</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: sans-serif; }
+        body { overflow: hidden; background: #87CEEB; }
+
+        /* === PANTALLA DE INICIO === */
+        #inicio {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: linear-gradient(180deg, #1e3a5f, #2ecc71);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 300;
+        }
+        #inicio h1 {
+            font-size: 3.5rem;
+            color: white;
+            text-shadow: 4px 4px #0003;
+            margin-bottom: 10px;
+        }
+        #inicio p { color: #d0f4de; font-size: 1.2rem; margin-bottom: 40px; }
+        
+        .seleccion-personaje {
+            display: flex;
+            gap: 50px;
+            margin-bottom: 40px;
+        }
+        .personaje-card {
+            background: white;
+            padding: 30px 40px;
+            border-radius: 16px;
+            text-align: center;
+            cursor: pointer;
+            border: 5px solid transparent;
+            transition: 0.25s;
+        }
+        .personaje-card:hover { transform: scale(1.05); }
+        .personaje-card.elegido { border-color: #f97316; background: #fff7ed; }
+        .personaje-card .preview { font-size: 5rem; margin-bottom: 10px; }
+        .personaje-card h3 { font-size: 1.3rem; color: #222; }
+
+        #btn-empezar {
+            background: #22c55e;
+            color: white;
+            font-size: 1.4rem;
+            padding: 14px 50px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            box-shadow: 0 5px 0 #16a34a;
+        }
+        #btn-empezar:disabled { background: #9ca3af; box-shadow: none; cursor: not-allowed; }
+
+        /* === INTERFAZ DEL JUEGO === */
+        canvas { display: block; }
+        
+        .ui { position: fixed; z-index: 100; pointer-events: none; }
+        
+        .barras {
+            top: 15px; left: 15px;
+            background: rgba(0,0,0,0.65);
+            padding: 12px 16px;
+            border-radius: 10px;
+            color: white;
+            min-width: 200px;
+        }
+        .barra-fila { margin: 8px 0; }
+        .barra-fila span { font-size: 0.9rem; }
+        .barra {
+            height: 14px;
+            background: #333;
+            border-radius: 7px;
+            margin-top: 4px;
+            overflow: hidden;
+        }
+        .barra > div {
+            height: 100%;
+            border-radius: 7px;
+            transition: width 0.3s;
+        }
+        .vida { background: #ef4444; }
+        .hambre { background: #f59e0b; }
+        .sed { background: #3b82f6; }
+
+        .caja-mensaje {
+            top: 15px; right: 15px;
+            background: rgba(0,0,0,0.65);
+            color: white;
+            padding: 12px 16px;
+            border-radius: 10px;
+            max-width: 260px;
+            text-align: center;
+            font-size: 0.95rem;
+        }
+
+        .inventario {
+            bottom: 20px; left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            background: rgba(0,0,0,0.55);
+            padding: 10px 15px;
+            border-radius: 12px;
+        }
+        .item {
+            width: 50px; height: 50px;
+            background: #22222280;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.4rem;
+        }
+        .item span { font-size: 0.7rem; margin-top: 2px; }
+
+        .controles {
+            bottom: 90px; right: 20px;
+            display: grid;
+            grid-template-columns: repeat(3, 55px);
+            gap: 5px;
+            pointer-events: auto;
+        }
+        .controles button {
+            width: 55px; height: 55px;
+            border: none;
+            border-radius: 10px;
+            background: #ffffffcc;
+            font-size: 1.3rem;
+            cursor: pointer;
+        }
+        .controles button:nth-child(2) { grid-column: 2; grid-row: 1; }
+        .controles button:nth-child(1) { grid-column: 1; grid-row: 2; }
+        .controles button:nth-child(3) { grid-column: 2; grid-row: 2; }
+        .controles button:nth-child(4) { grid-column: 3; grid-row: 2; }
+
+        .boton-accion {
+            bottom: 20px; left: 20px;
+            pointer-events: auto;
+        }
+        .boton-accion button {
+            background: #f97316;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #c2410c;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+</head>
+<body>
+
+    <!-- PANTALLA DE INICIO -->
+    <div id="inicio">
+        <h1>🏝️ La Isla Perdida</h1>
+        <p>Explora • Recolecta • Sobrevive</p>
+        
+        <div class="seleccion-personaje">
+            <div class="personaje-card" id="card-chico" onclick="elegir('chico')">
+                <div class="preview">🧑</div>
+                <h3>Chico</h3>
+            </div>
+            <div class="personaje-card" id="card-chica" onclick="elegir('chica')">
+                <div class="preview">👩</div>
+                <h3>Chica</h3>
+            </div>
+        </div>
+        
+        <button id="btn-empezar" onclick="iniciar()" disabled>▶ JUGAR</button>
+    </div>
+
+    <!-- INTERFAZ DEL JUEGO -->
+    <div class="ui barras" id="ui-barras" style="display:none;">
+        <div class="barra-fila">
+            <span>❤️ Vida</span>
+            <div class="barra"><div class="vida" id="b-vida" style="width:100%"></div></div>
+        </div>
+        <div class="barra-fila">
+            <span>🍖 Hambre</span>
+            <div class="barra"><div class="hambre" id="b-hambre" style="width:100%"></div></div>
+        </div>
+        <div class="barra-fila">
+            <span>💧 Sed</span>
+            <div class="barra"><div class="sed" id="b-sed" style="width:100%"></div></div>
+        </div>
+    </div>
+
+    <div class="ui caja-mensaje" id="ui-msj" style="display:none;">
+        <span id="texto-msj">¡Bienvenido a la isla! Recolecta objetos y sobrevive.</span>
+    </div>
+
+    <div class="ui inventario" id="ui-inv" style="display:none;">
+        <div class="item">🪵<span id="maderac">0</span></div>
+        <div class="item">🍎<span id="comidac">0</span></div>
+        <div class="item">💧<span id="aguac">0</span></div>
+        <div class="item">🪨<span id="piedrac">0</span></div>
+    </div>
+
+    <div class="ui boton-accion" id="ui-accion" style="display:none;">
+        <button onclick="intentarRecolectar()">🖐️ RECOLECTAR</button>
+    </div>
+
+    <div class="ui controles" id="ui-mov" style="display:none;">
+        <button onmousedown="arriba=true" onmouseup="arriba=false">⬆️</button>
+        <button onmousedown="izq=true" onmouseup="izq=false">⬅️</button>
+        <button onmousedown="abajo=true" onmouseup="abajo=false">⬇️</button>
+        <button onmousedown="der=true" onmouseup="der=false">➡️</button>
+    </div>
+
+<script>
+// === SELECCIÓN DE PERSONAJE ===
+let tipoPersonaje = null;
+function elegir(t) {
+    tipoPersonaje = t;
+    document.querySelectorAll('.personaje-card').forEach(c => c.classList.remove('elegido'));
+    document.getElementById('card-' + t).classList.add('elegido');
+    document.getElementById('btn-empezar').disabled = false;
+}
+
+// === VARIABLES DEL JUEGO ===
+let escena, camara, render, jugador;
+let stats = { vida: 100, hambre: 100, sed: 100 };
+let inventario = { madera:0, comida:0, agua:0, piedra:0 };
+let objetos = [];
+let teclas = { w:false, a:false, s:false, d:false };
+let arriba=false, abajo=false, izq=false, der=false;
+let anguloCam = 0;
+let distCam = 14;
+let juegoActivo = false;
+
+// === INICIAR ===
+function iniciar() {
+    document.getElementById('inicio').style.display = 'none';
+    document.getElementById('ui-barras').style.display = 'block';
+    document.getElementById('ui-msj').style.display = 'block';
+    document.getElementById('ui-inv').style.display = 'flex';
+    document.getElementById('ui-accion').style.display = 'block';
+    document.getElementById('ui-mov').style.display = 'grid';
+    juegoActivo = true;
+
+    crearEscena();
+    crearIsla();
+    crearJugador();
+    crearObjetosRecolectables();
+    configurarControles();
+    bucle();
+    
+    mensaje('¡Llegaste a la isla perdida! 🏝️ Busca objetos, recógelos y sobrevive.');
+}
+
+// === ESCENA 3D ===
+function crearEscena() {
+    escena = new THREE.Scene();
+    escena.background = new THREE.Color(0x87CEEB);
+
+    camara = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 200);
+
+    render = new THREE.WebGLRenderer({ antialias:true });
+    render.setSize(window.innerWidth, window.innerHeight);
+    render.shadowMap.enabled = true;
+    document.body.appendChild(render.domElement);
+
+    const sol = new THREE.DirectionalLight(0xffffff, 1.4);
+    sol.position.set(25, 40, 20);
+    sol.castShadow = true;
+    escena.add(sol);
+    escena.add(new THREE.AmbientLight(0xffffff, 0.5));
+
+    window.addEventListener('resize', () => {
+        camara.aspect = window.innerWidth / window.innerHeight;
+        camara.updateProjectionMatrix();
+        render.setSize(window.innerWidth, window.innerHeight);
+    });
+}
+
+// === CREAR ISLA (estilo Roblox: bloques simples) ===
+function crearIsla() {
+    // Suelo de arena (plataforma grande)
+    const sueloGeo = new THREE.BoxGeometry(28, 1, 28);
+    const sueloMat = new THREE.MeshLambertMaterial({ color: 0xf4d03f });
+    const suelo = new THREE.Mesh(sueloGeo, sueloMat);
+    suelo.position.y = -0.5;
+    suelo.receiveShadow = true;
+    escena.add(suelo);
+
+    // Agua alrededor
+    const aguaGeo = new THREE.RingGeometry(14, 50, 64);
+    const aguaMat = new THREE.MeshLambertMaterial({ color: 0x5dade2, side: THREE.DoubleSide });
+    const agua = new THREE.Mesh(aguaGeo, aguaMat);
+    agua.rotation.x = -Math.PI/2;
+    agua.position.y = -1.0;
+    escena.add(agua);
+
+    // Árboles estilo Roblox (tronco cubo + hojas cubo)
+    const posArboles = [[-7,-6],[7,-5],[-6,6],[6,7],[-9,2],[9,-3],[-3,-9],[4,9]];
+    posArboles.forEach(([x,z]) => crearArbol(x,z));
+
+    // Rocas
+    const posRocas = [[-4,-4],[5,3],[-3,5],[6,-6],[-8,0]];
+    posRocas.forEach(([x,z]) => crearRoca(x,z));
+}
+
+function crearArbol(x,z) {
+    // Tronco cubo
+    const tronco = new THREE.Mesh(
+        new THREE.BoxGeometry(0.8, 2.5, 0.8),
+        new THREE.MeshLambertMaterial({ color: 0x8b4513 })
+    );
+    tronco.position.set(x, 1.25, z);
+    tronco.castShadow = true;
+    escena.add(tronco);
+
+    // Hojas cubo
+    const hojas = new THREE.Mesh(
+        new THREE.BoxGeometry(2.2, 2.2, 2.2),
+        new THREE.MeshLambertMaterial({ color: 0x22c55e })
+    );
+    hojas.position.set(x, 3.5, z);
+    hojas.castShadow = true;
+    escena.add(hojas);
+}
+
+function crearRoca(x,z) {
+    const roca = new THREE.Mesh(
+        new THREE.BoxGeometry(1.2, 0.8, 1.0),
+        new THREE.MeshLambertMaterial({ color: 0x94a3b8 })
+    );
+    roca.position.set(x, 0.4, z);
+    roca.rotation.y = Math.random()*0.5;
+    roca.castShadow = true;
+    escena.add(roca);
+}
+
+// === OBJETOS RECOLECTABLES ===
+const tiposObjeto = {
+    madera: { color:0xa16207, forma:'cilindro', alto:0.6, icono:'🪵' },
+    comida: { color:0xef4444, forma:'esfera', tam:0.35, icono:'🍎' },
+    agua: { color:0x3b82f6, forma:'capsula', alto:0.5, icono:'💧' },
+    piedra: { color:0x6b7280, forma:'cubo', tam:0.5, icono:'🪨' }
+};
+
+function crearObjetosRecolectables() {
+    const posiciones = [
+        {x: 3, z: -4, tipo:'madera'},
+        {x: -5, z: 2, tipo:'comida'},
+        {x: 6, z: 4, tipo:'agua'},
+        {x: -3, z: -6, tipo:'piedra'},
+        {x: 0, z: 7, tipo:'comida'},
+        {x: -8, z: -2, tipo:'madera'},
+        {x: 4, z: -7, tipo:'agua'},
+        {x: -6, z: 7, tipo:'piedra'},
+        {x: 2, z: 3, tipo:'comida'},
+        {x: -2, z: -3, tipo:'madera'},
+        {x: 8, z: -2, tipo:'piedra'},
+        {x: -4, z: -8, tipo:'agua'},
+    ];
+
+    posiciones.forEach((p, i) => {
+        const t = tiposObjeto[p.tipo];
+        let mesh;
+        if (t.forma === 'cubo') {
+            mesh = new THREE.Mesh(new THREE.BoxGeometry(t.tam, t.tam, t.tam), new THREE.MeshLambertMaterial({color:t.color}));
+        } else if (t.forma === 'esfera') {
+            mesh = new THREE.Mesh(new THREE.SphereGeometry(t.tam), new THREE.MeshLambertMaterial({color:t.color}));
+        } else if (t.forma === 'cilindro') {
+            mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, t.alto), new THREE.MeshLambertMaterial({color:t.color}));
+        } else {
+            mesh = new THREE.Mesh(new THREE.CapsuleGeometry(0.12, t.alto*0.6, 4, 8), new THREE.MeshLambertMaterial({color:t.color}));
+        }
+        mesh.position.set(p.x, 0.4 + Math.sin(i)*0.15, p.z);
+        mesh.castShadow = true;
+        escena.add(mesh);
+        objetos.push({ mesh, tipo:p.tipo, x:p.x, z:p.z, recogido:false });
+    });
+}
+
+// === JUGADOR ESTILO ROBLOX ===
+function crearJugador() {
+    jugador = new THREE.Group();
+    jugador.position.set(0, 0.6, 0);
+
+    const colorCuerpo = tipoPersonaje === 'chica' ? 0xec4899 : 0x3b82f6;
+    const colorPiel = 0xffd4a3;
+
+    // Cuerpo cubo
+    const cuerpo = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.8, 0.4), new THREE.MeshLambertMaterial({color:colorCuerpo}));
+    cuerpo.position.y = 0.4;
+    cuerpo.castShadow = true;
+    jugador.add(cuerpo);
+
+    // Cabeza cubo
+    const cabeza = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), new THREE.MeshLambertMaterial({color:colorPiel}));
+    cabeza.position.y = 1.05;
+    cabeza.castShadow = true;
+    jugador.add(cabeza);
+
+    // Piernas
+    const piernas = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.55, 0.35), new THREE.MeshLambertMaterial({color:0x222}));
+    piernas.position.y = -0.15;
+    piernas.castShadow = true;
+    jugador.add(piernas);
+
+    escena.add(jugador);
+}
+
+// === CONTROLES ===
+function configurarControles() {
+    document.addEventListener('keydown', e => {
+        const k = e.key.toLowerCase();
+        if(k==='w') teclas.w = true;
+        if(k==='s') teclas.s = true;
+        if(k==='a') teclas.a = true;
+        if(k==='d') teclas.d = true;
+    });
+    document.addEventListener('keyup', e => {
+        const k = e.key.toLowerCase();
+        if(k==='w') teclas.w = false;
+        if(k==='s') teclas.s = false;
+        if(k==='a') teclas.a = false;
+        if(k==='d') teclas.d = false;
+    });
+
+    // Cámara con ratón
+    let mouseDown = false, lastX=0;
+    document.addEventListener('mousedown', e=>{ mouseDown=true; lastX=e.clientX; });
+    document.addEventListener('mousemove', e=>{
+        if(mouseDown) { anguloCam += (e.clientX - lastX) * 0.005; lastX = e.clientX; }
+    });
+    document.addEventListener('mouseup', ()=>mouseDown=false);
+    document.addEventListener('wheel', e=>{ distCam = Math.max(8, Math.min(22, distCam + e.deltaY*0.01)); });
+}
+
+// === RECOLECTAR OBJETO ===
+function intentarRecolectar() {
+    const px = jugador.position.x;
+    const pz = jugador.position.z;
+    for (let obj of objetos) {
+        if (obj.recogido) continue;
+        const dist = Math.sqrt((px-obj.x)**2 + (pz-obj.z)**2);
+        if (dist < 2.5) {
+            obj.recogido = true;
+            obj.mesh.visible = false;
+            inventario[obj.tipo]++;
+            mensaje(`¡Recolectaste ${tiposObjeto[obj.tipo].icono}!`);
+            actualizarInventario();
+            return;
+        }
+    }
+    mensaje('🔍 No hay nada cerca. Acércate más a un objeto.');
+}
+
+function actualizarInventario() {
+    document.getElementById('maderac').textContent = inventario.madera;
+    document.getElementById('comidac').textContent = inventario.comida;
+    document.getElementById('aguac').textContent = inventario.agua;
+    document.getElementById('piedrac').textContent = inventario.piedra;
+}
+
+function mensaje(texto) {
+    document.getElementById('texto-msj').textContent = texto;
+}
+
+// === BUCLE PRINCIPAL ===
+let tiempo = 0;
+function bucle() {
+    requestAnimationFrame(bucle);
+    if (!juegoActivo) { render.render(escena, camara); return; }
+    
+    tiempo++;
+
+    // Movimiento
+    const vel = 0.07;
+    let dx=0, dz=0;
+    const adelante = teclas.w || arriba;
+    const atras = teclas.s || abajo;
+    const izq = teclas.a || izq;
+    const der = teclas.d || der;
+
+    if (adelante) { dx -= Math.sin(anguloCam) * vel; dz -= Math.cos(anguloCam) * vel; }
+    if (atras)    { dx += Math.sin(anguloCam) * vel; dz += Math.cos(anguloCam) * vel; }
+    if (izq)      { dx -= Math.cos(anguloCam) * vel; dz += Math.sin(anguloCam) * vel; }
+    if (der)      { dx += Math.cos(anguloCam) * vel; dz -= Math.sin(anguloCam) * vel; }
+
+    const nx = jugador.position.x + dx;
+    const nz = jugador.position.z + dz;
+    if (Math.sqrt(nx*nx + nz*nz) < 13) {
+        jugador.position.x = nx;
+        jugador.position.z = nz;
+        if(Math.abs(dx) > 0.001 || Math.abs(dz) > 0.001) jugador.rotation.y = Math.atan2(dx, dz);
+    }
+
+    // Cámara
+    camara.position.x = jugador.position.x + Math.sin(anguloCam) * distCam;
+    camara.position.z = jugador.position.z + Math.cos(anguloCam) * distCam;
+    camara.position.y = jugador.position.y + 5;
+    camara.lookAt(jugador.position.x, 1.2, jugador.position.z);
+
+    // Consumir estadísticas
+    if (tiempo % 60 === 0) {
+        stats.hambre = Math.max(0, stats.hambre - 1);
+        stats.sed = Math.max(0, stats.sed - 1.5);
+        if (stats.hambre <= 0 || stats.sed <= 0) stats.vida = Math.max(0, stats.vida - 2);
+        document.getElementById('b-vida').style.width = stats.vida + '%';
+        document.getElementById('b-hambre').style.width = stats.hambre + '%';
+        document.getElementById('b-sed').style.width = stats.sed + '%';
+    }
+
+    // Animar objetos (flotar)
+    objetos.forEach((obj, i) => {
+        if (!obj.recogido) {
+            obj.mesh.position.y = 0.4 + Math.sin(tiempo*0.05 + i) * 0.08;
+            obj.mesh.rotation.y += 0.02;
+        }
+    });
+
+    render.render(escena, camara);
+}
+
+</script>
+</body>
+</html>
